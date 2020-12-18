@@ -114,7 +114,15 @@ int main(int argc, char *argv[]) {
   static_assert(sizeof(node*)==8);
   std::vector<uint64_t> keys(max_keys);
   node *nodes = nullptr, **nodes_out = nullptr;
-  int64_t *cycles = nullptr;  
+  int64_t *cycles = nullptr;
+  
+  cudaDeviceProp deviceProp;
+  cudaGetDeviceProperties(&deviceProp, 0);
+  if(deviceProp.kernelExecTimeoutEnabled) {
+    std::cout << "Warning : kernel timeout enabled (long runs will fail)\n";
+  }
+  double freq = deviceProp.clockRate * 1000.0;
+  
   assert(cudaMallocManaged((void**)&nodes, sizeof(node)*max_keys) == cudaSuccess);
   assert(cudaMallocManaged((void**)&nodes_out, sizeof(node*)*nthr) == cudaSuccess);  
   assert(cudaMallocManaged((void**)&cycles, sizeof(int64_t)*nthr) == cudaSuccess);
@@ -149,10 +157,13 @@ int main(int argc, char *argv[]) {
       std::cerr << cudaGetErrorString(ce) << "\n";
     }
     sort(cycles, nthr);
-    double t = static_cast<double>(cycles[nthr/2]) / iters;
-    std::cout << sizeof(node)*n_keys << " bytes, cycles per load "
-	      << t << "\n";
-    out << (sizeof(node)*n_keys) << "," << t << "\n";
+    double cpl = static_cast<double>(cycles[nthr/2]) / iters;
+    double nspl = (cpl/freq) / (1e-9);
+    std::cout << sizeof(node)*n_keys << " bytes, GPU cycles per load "
+	      << cpl << ", nanosec per load " << nspl << " \n";
+    
+    out << (sizeof(node)*n_keys) << "," << cpl << "\n";
+    out.flush();
   }
   cudaFree(nodes);
   cudaFree(nodes_out);
