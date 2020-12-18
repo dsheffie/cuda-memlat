@@ -20,13 +20,12 @@ void swap(T &x, T &y) {
 }
 
 template <typename T>
-void shuffle(std::vector<T> &vec) {
-  for(size_t i = 0, len = vec.size(); i < len; i++) {
+void shuffle(std::vector<T> &vec, size_t len) {
+  for(size_t i = 0; i < len; i++) {
     size_t j = i + (rand() % (len - i));
     swap(vec[i], vec[j]);
   }
 }
-
 
 template <typename T>
 size_t partition(T *arr, size_t n) {
@@ -133,7 +132,7 @@ int main(int argc, char *argv[]) {
     for(uint64_t i = 0; i < n_keys; i++) {
       keys[i] = i;
     }
-    shuffle(keys);
+    shuffle(keys, n_keys);
     node *h = &nodes[keys[0]];
     node *c = h;  
     h->next = h;
@@ -162,7 +161,8 @@ int main(int argc, char *argv[]) {
     std::cout << sizeof(node)*n_keys << " bytes, GPU cycles per load "
 	      << cpl << ", nanosec per load " << nspl << " \n";
     
-    out << (sizeof(node)*n_keys) << "," << cpl << "\n";
+    out << (sizeof(node)*n_keys) << ","
+	<< cpl << ","<<  nspl << "\n";
     out.flush();
   }
   cudaFree(nodes);
