@@ -65,8 +65,9 @@ void sort(T *arr, size_t len) {
 }
 
 
-__global__ void traverse(node *n, int64_t *cycles, node **out, uint64_t iters) {
+__global__ void traverse(node **nodes, int64_t *cycles, uint64_t iters) {
   int idx = (blockDim.x * blockIdx.x) + threadIdx.x;
+  node *n = nodes[idx];
   int64_t now = clock64();
   while(iters) {
     n = n->next;
@@ -104,7 +105,7 @@ __global__ void traverse(node *n, int64_t *cycles, node **out, uint64_t iters) {
     iters -= 32;
   }
   cycles[idx] = clock64() - now;
-  out[idx] = n;
+  nodes[idx] = n;
 }
 
 int main(int argc, char *argv[]) {
@@ -144,12 +145,15 @@ int main(int argc, char *argv[]) {
       c = n;
     }
     uint64_t iters = n_keys*16;
-
+    for(int i = 0; i < nthr; i++) {
+      nodes_out[i] = h;
+    }
+    
     if(iters < (1UL<<20)) {
       iters = 1UL<<20;
     }
     
-    traverse<<<nthr/32, 32>>>(h, cycles, nodes_out,  iters);
+    traverse<<<nthr/32, 32>>>(nodes_out, cycles, iters);
     cudaDeviceSynchronize();
     auto ce = cudaGetLastError();
     if(ce != cudaSuccess) {
